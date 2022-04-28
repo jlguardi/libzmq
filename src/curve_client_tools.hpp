@@ -180,25 +180,16 @@ struct curve_client_tools_t
         //  Create Box [C + vouch + metadata](C'->S')
         std::fill (initiate_plaintext.begin (),
                    initiate_plaintext.begin () + crypto_box_ZEROBYTES, 0);
-
-        //  False positives due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=99578
-#if __GNUC__ >= 11
-#pragma GCC diagnostic ignored "-Warray-bounds"
-#pragma GCC diagnostic ignored "-Wstringop-overflow="
-#endif
-        memcpy (&initiate_plaintext[crypto_box_ZEROBYTES], public_key_, 32);
-        memcpy (&initiate_plaintext[crypto_box_ZEROBYTES + 32], vouch_nonce + 8,
-                16);
-        memcpy (&initiate_plaintext[crypto_box_ZEROBYTES + 48],
-                vouch_box + crypto_box_BOXZEROBYTES, 80);
+        uint8_t * ptr = initiate_plaintext.data() ? initiate_plaintext.data() + 
+                   crypto_box_ZEROBYTES : NULL;
+        if (!ptr)
+            return -1;
+        memcpy (ptr, public_key_, 32);
+        memcpy (ptr + 32, vouch_nonce + 8, 16);
+        memcpy (ptr + 48, vouch_box + crypto_box_BOXZEROBYTES, 80);
         if (metadata_length_) {
-            memcpy (&initiate_plaintext[crypto_box_ZEROBYTES + 48 + 80],
-                    metadata_plaintext_, metadata_length_);
+            memcpy (ptr + 48 + 80, metadata_plaintext_, metadata_length_);
         }
-#if __GNUC__ >= 11
-#pragma GCC diagnostic pop
-#pragma GCC diagnostic pop
-#endif
 
         memcpy (initiate_nonce, "CurveZMQINITIATE", 16);
         put_uint64 (initiate_nonce + 16, cn_nonce_);
